@@ -1,35 +1,33 @@
 import hashlib
 import sys
-from Crypto.Cipher import AES
+import deflate
 
 def gen_key(id):
 	h = hashlib.md5(id.encode()).digest()
 	key = h[0:1] + h[-1:] + h[-1:1:-1]
-	print(f"Unrotated key \t: {key.hex()}")
 	return key 
 
 def rrotate(key, n):
 	rotated = b""
-	print(f"Rotation\t: {n}")
 	for i in range(len(key)):
 		off = (i + n) % len(key)
 		rotated += key[off:off+1]
 	return rotated
 
 if __name__ == "__main__" :
-	if len(sys.argv) != 3 :
-		print("Usage : py acsavedit.py <file_path> <id>")
+	if len(sys.argv) != 4 :
+		print("Usage : py acsavedit.py <file_path> <id> <new_id>")
 		exit(1)
 	with open(sys.argv[1], "rb") as f :
-		print(f"ID used\t: {sys.argv[2]}")
 		data	= f.read()
 		ct_data = data[0x228:]
 		key		= rrotate(gen_key(sys.argv[2]), len(ct_data) % 16 - 1)
-		print(f"Rotated key\t: {key.hex()}")
-		print(f"Data length\t: {len(ct_data)}")
+		new_key = rrotate(gen_key(sys.argv[3]), len(ct_data) % 16 - 1)
 		with open(sys.argv[1] + ".hkd", "wb") as out :
 			i = 0
-			out.write(data[:0x228])
+			new_data = b""
+			new_data += data[:0x228]
 			for b in ct_data :
-				out.write(bytes([b ^ key[i % 16]]))
+				new_data += bytes([(b ^ key[i % 16]) ^ new_key[i % 16]])
 				i += 1
+			out.write(new_data)
